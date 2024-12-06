@@ -164,6 +164,8 @@
         const [inputText, setInputText] = React.useState('');
         const [outputText, setOutputText] = React.useState('');
 
+
+        const languageName = supportedLanguages.find(lang => lang.code === language).name;
         React.useEffect(() => {
             setOutputText(transliterate(inputText, language));
         }, [inputText, language]);
@@ -186,6 +188,7 @@
                 <div style={{marginBottom: '1rem'}}>
                     <label htmlFor="input-text">Input Text:</label><br/>
                     <textarea
+                        placeholder={`Enter ${languageName} here...`}
                         id="input-text"
                         rows={10}
                         value={inputText}
@@ -196,6 +199,7 @@
                 <div style={{marginBottom: '1rem'}}>
                     <label htmlFor="output-text">Output Text:</label><br/>
                     <textarea
+                        placeholder="Output will appear here..."
                         id="output-text"
                         rows={10}
                         value={outputText}
