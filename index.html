@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Armenian TransԼiterator</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+        }
+
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>TransԼiterator</h1>
+<div id="root"></div>
+
+<script type="text/babel">
+    // Full Armenian map including multi-char sequences like Ու and ու, and ԵՎ/և
+    // No hardcoding in code. We'll just rely on sorting and generic matching.
+    const translitMaps = {
+        "hy": [
+            {from: "Ու", default: "U"},
+            {from: "ու", default: "u"},
+            {from: "ԵՎ", default: "Ev", word_initial: "Yev"},
+            {from: "և", default: "ev", word_initial: "yev"},
+
+            {from: "Ա", default: "A"},
+            {from: "ա", default: "a"},
+            {from: "Բ", default: "B"},
+            {from: "բ", default: "b"},
+            {from: "Գ", default: "G"},
+            {from: "գ", default: "g"},
+            {from: "Դ", default: "D"},
+            {from: "դ", default: "d"},
+            {from: "Ե", default: "E", word_initial: "Ye"},
+            {from: "ե", default: "e", word_initial: "ye"},
+            {from: "Զ", default: "Z"},
+            {from: "զ", default: "z"},
+            {from: "Է", default: "E"},
+            {from: "է", default: "e"},
+            {from: "Ը", default: "Ə"},
+            {from: "ը", default: "ə"},
+            {from: "Թ", default: "T’"},
+            {from: "թ", default: "t’"},
+            {from: "Ժ", default: "Zh"},
+            {from: "ժ", default: "zh"},
+            {from: "Ի", default: "I"},
+            {from: "ի", default: "i"},
+            {from: "Լ", default: "L"},
+            {from: "լ", default: "l"},
+            {from: "Խ", default: "Х"},
+            {from: "խ", default: "х"},
+            {from: "Ծ", default: "Ts"},
+            {from: "ծ", default: "ts"},
+            {from: "Կ", default: "K"},
+            {from: "կ", default: "k"},
+            {from: "Հ", default: "H"},
+            {from: "հ", default: "h"},
+            {from: "Ձ", default: "Dz"},
+            {from: "ձ", default: "dz"},
+            {from: "Ղ", default: "Ғ"},
+            {from: "ղ", default: "ғ"},
+            {from: "Ճ", default: "Ч"},
+            {from: "ճ", default: "ч"},
+            {from: "Մ", default: "M"},
+            {from: "մ", default: "m"},
+            {from: "Յ", default: "Y"},
+            {from: "յ", default: "y"},
+            {from: "Ն", default: "N"},
+            {from: "ն", default: "n"},
+            {from: "Շ", default: "Ш"},
+            {from: "շ", default: "ш"},
+            {from: "Ո", default: "O", word_initial: "Vo"},
+            {from: "ո", default: "o", word_initial: "vo"},
+            {from: "Չ", default: "Ч’"},
+            {from: "չ", default: "ч’"},
+            {from: "Պ", default: "P"},
+            {from: "պ", default: "p"},
+            {from: "Ջ", default: "Дж"},
+            {from: "ջ", default: "дж"},
+            {from: "Ռ", default: "R"},
+            {from: "ռ", default: "r"},
+            {from: "Ս", default: "S"},
+            {from: "ս", default: "s"},
+            {from: "Վ", default: "V"},
+            {from: "վ", default: "v"},
+            {from: "Տ", default: "T"},
+            {from: "տ", default: "t"},
+            {from: "Ր", default: "R’"},
+            {from: "ր", default: "r’"},
+            {from: "Ց", default: "Ц"},
+            {from: "ց", default: "ц"},
+            {from: "ւ", default: "u"}, // in case appears alone
+            {from: "Փ", default: "P’"},
+            {from: "փ", default: "p’"},
+            {from: "Ք", default: "Q"},
+            {from: "ք", default: "q"},
+            {from: "Օ", default: "O"},
+            {from: "օ", default: "o"},
+            {from: "Ֆ", default: "F"},
+            {from: "ֆ", default: "f"}
+        ],
+    };
+
+    // Sort the maps by descending length of `from` to ensure longest matches first
+    for (const lang in translitMaps) {
+        translitMaps[lang].sort((a, b) => b.from.length - a.from.length);
+    }
+
+    function transliterate(input, lang = 'hy') {
+        const charArray = translitMaps[lang] || [];
+        let result = "";
+        let i = 0;
+
+        while (i < input.length) {
+            const isStartOfWord = (i === 0 || /\s/.test(input[i - 1]));
+            let matched = false;
+
+            // Try to find the longest possible match at this position
+            for (const entry of charArray) {
+                const {from, default: defVal, word_initial} = entry;
+                if (input.startsWith(from, i)) {
+                    // Match found
+                    if (isStartOfWord && word_initial) {
+                        result += word_initial;
+                    } else {
+                        result += defVal;
+                    }
+                    i += from.length; // advance by the length of the matched substring
+                    matched = true;
+                    break; // stop checking other entries
+                }
+            }
+
+            if (!matched) {
+                // No match found, just append the character as is
+                result += input[i];
+                i++;
+            }
+        }
+
+        return result;
+    }
+
+    const supportedLanguages = [
+        {code: 'hy', name: 'Armenian'},
+        {code: 'ru', name: 'Russian'}
+    ];
+
+    function Transliterator() {
+        const [language, setLanguage] = React.useState('hy');
+        const [inputText, setInputText] = React.useState('');
+        const [outputText, setOutputText] = React.useState('');
+
+        React.useEffect(() => {
+            setOutputText(transliterate(inputText, language));
+        }, [inputText, language]);
+
+        return (
+            <div>
+                <div style={{marginBottom: '1rem'}}>
+                    <label htmlFor="language-selector">Language: </label>
+                    <select
+                        id="language-selector"
+                        value={language}
+                        onChange={e => setLanguage(e.target.value)}
+                    >
+                        {supportedLanguages.map(lang => (
+                            <option key={lang.code} value={lang.code}>{lang.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div style={{marginBottom: '1rem'}}>
+                    <label htmlFor="input-text">Input Text:</label><br/>
+                    <textarea
+                        id="input-text"
+                        rows={10}
+                        value={inputText}
+                        onChange={e => setInputText(e.target.value)}
+                    />
+                </div>
+
+                <div style={{marginBottom: '1rem'}}>
+                    <label htmlFor="output-text">Output Text:</label><br/>
+                    <textarea
+                        id="output-text"
+                        rows={10}
+                        value={outputText}
+                        readOnly
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Transliterator/>);
+</script>
+</body>
+</html>
